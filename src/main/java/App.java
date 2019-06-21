@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.List;
 
 /*
@@ -14,7 +15,82 @@ public class App {
 
     public String bestCharge(List<String> inputs) {
         //TODO: write code here
-
-        return null;
+        class ItemDto {
+            private String itemName;
+            private int count;
+            private double singlePrice;
+            private boolean isHalfPriceItem;
+            public ItemDto(String itemName, int count, double singlePrice, boolean isHalfPriceItem) {
+                this.itemName = itemName;
+                this.count = count;
+                this.singlePrice = singlePrice;
+                this.isHalfPriceItem = isHalfPriceItem;
+            }
+            public String getItemName() {
+                return itemName;
+            }
+            public int getCount() {
+                return count;
+            }
+            public double getSinglePrice() {
+                return singlePrice;
+            }
+            public boolean isHalfPriceItem() {
+                return isHalfPriceItem;
+            }
+        }
+        String result = "============= 订餐明细 =============\n";
+        List<Item> allItems = this.itemRepository.findAll();
+        List<SalesPromotion> allPromotions = this.salesPromotionRepository.findAll();
+        List<String> allHalfPriceItems = null;
+        //得到半价的菜品
+        for(SalesPromotion salesPromotion: allPromotions) {
+            if(salesPromotion.getType().equals("50%_DISCOUNT_ON_SPECIFIED_ITEMS")) {
+                allHalfPriceItems = salesPromotion.getRelatedItems();
+            }
+        }
+        List<ItemDto> itemDtos = new ArrayList<>();
+        for(String order: inputs) {
+            String[] orders = order.split("x");
+            for(Item item: allItems) {
+                if(item.getId().equals(orders[0].trim())) {
+                    itemDtos.add(new ItemDto(item.getName(), Integer.parseInt(orders[1].trim()), item.getPrice(), allHalfPriceItems.contains(orders[0].trim())));
+                }
+            }
+        }
+        int discount = 0;
+        int totalPrice = 0;
+        List<String> halfPriceItems = new ArrayList<>();
+        for(ItemDto itemDto: itemDtos) {
+            int oneItemPrice = (int)itemDto.getSinglePrice() * itemDto.getCount();
+            result += itemDto.getItemName() + " x " + itemDto.getCount() + " = " + oneItemPrice + "元\n";
+            totalPrice += oneItemPrice;
+            if(itemDto.isHalfPriceItem()) {
+                discount += itemDto.getSinglePrice() / 2;
+                halfPriceItems.add(itemDto.getItemName());
+            }
+        }
+        if(totalPrice < 30) {
+            if(discount != 0) {
+                result += "-----------------------------------\n";
+                result += "使用优惠:\n";
+                result += "指定菜品半价(" + String.join("，", halfPriceItems) + ")，省" + discount + "元\n";
+            }
+        } else {
+            if(discount <= 6) {
+                discount = 6;
+                result += "-----------------------------------\n";
+                result += "使用优惠:\n";
+                result += "满30减6元，省6元\n";
+            }else {
+                result += "-----------------------------------\n";
+                result += "使用优惠:\n";
+                result += "指定菜品半价(" + String.join("，", halfPriceItems) + ")，省" + discount + "元\n";
+            }
+        }
+        result += "-----------------------------------\n";
+        result += "总计：" + (totalPrice-discount) + "元\n";
+        result += "===================================";
+        return result;
     }
 }
